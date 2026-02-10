@@ -34,19 +34,13 @@ The input snapshot must represent memory contents from `$4000` to `$43F4`.
 
 The loaded program must follow these rules:
 
-1. System variables must be valid on load
-   (e.g. `D_FILE` must be correctly set)
-
-2. A `ret` instruction must be present **exactly at `$43F4`**
+1. A `ret` instruction must be present **exactly at `$43F4`**
    (end of the maximum loadable code)
 
-3. At least **one additional byte** must exist at `$43F5`
+2. At least **one additional byte** must exist at `$43F5`
    (snapshot file should be at least 1014 bytes long)
 
-4. Program entry code must:
-
-   * Switch back to **SLOW mode** with `out ($FE), a`
-   * Execute `exx` if alternate registers are required
+3. Program entry code should switch back to **SLOW mode** with `out ($FE), a` when needed (system variables should also have proper values in case)
 
 See example loaded program for details.
 
