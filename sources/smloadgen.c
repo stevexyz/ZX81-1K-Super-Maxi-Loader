@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #define SAMPLE_RATE     44100 // CD quality
 #define HALF_PULSE      150e-6 // 300 µs sine pulse (square)
@@ -195,7 +196,17 @@ int main(int argc, char *argv[])
     }
     
     /* Open WAV file */
-    wav_file = fopen("loader_and_loaded.wav", "wb");
+    char outname[512];
+    strncpy(outname, argv[1], sizeof(outname));
+    outname[sizeof(outname) - 1] = '\0';
+    char *slash = strrchr(outname, '/');
+    char *dot   = strrchr(outname, '.');
+    if (dot && (!slash || dot > slash)) {
+        *dot = '\0';   // remove existing extension
+    }
+    strncat(outname, ".wav", sizeof(outname) - strlen(outname) - 1);
+    wav_file = fopen(outname, "wb");
+
     if (!wav_file) {
         perror("Failed to open output WAV");
         return 4;
@@ -234,6 +245,6 @@ int main(int argc, char *argv[])
     free(data1);
     free(data2);
 
-    printf("loader + loaded => loader_and_loaded.wav\n");
+    printf("Created %s\n", outname);
     return 0;
 }

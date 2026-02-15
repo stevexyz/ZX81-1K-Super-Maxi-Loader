@@ -8,5 +8,9 @@ rm *.sym 2> /dev/null
 rm *.sld.txt 2> /dev/null
 rm *.wav 2> /dev/null
 rm *.bin 2> /dev/null
-rm smload 2> /dev/null
+rm *.sml 2> /dev/null
+rm smloadgen 2> /dev/null
+rm smlfilegen 2> /dev/null
+rm smloadgen.exe 2> /dev/null
+rm smlfilegen.exe 2> /dev/null
 
