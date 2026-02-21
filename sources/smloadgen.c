@@ -113,17 +113,17 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    if (argc < 7) {
+    if (argc < 3) {
         fprintf(stderr,
-            "Usage: %s <Snapshot File> <Starting Address> [<BC' value> <DE' value> <HL' value>\n"
-            "                [<AF' value> <IX value> <IY value> <I value>]]"
-            "Example: %s snapshot.bin 0x4321 0x0123 0x4567 0x89AB 0xCDEF 0x0281 0x4000 0x42\n",
+            "\nUsage: %s <Snapshot File> <Starting Address> [<BC' value> <DE' value> <HL' value>"
+            "\n                [<AF' value> <IX value> <IY value> <I value>]]"
+            "\nExample: %s snapshot.bin 0x4321 0x0123 0x4567 0x89AB 0xCDEF 0x0281 0x4000 0x42\n",
             argv[0], argv[0]);
         return 1;
     }
 
     /* Read input files */
-    FILE *f1 = fopen("loader.p", "rb");
+    FILE *f1 = fopen("smloader.p", "rb");
     FILE *f2 = fopen(argv[1], "rb");
 
     if (!f1 || !f2) {
