@@ -17,8 +17,17 @@
 #define SMOOTH_WAVE     // if defined the wave will be smoothed a bit to minimize gibbs effects
 #define SMOOTH_FACTOR   0.85
 
+#define SML_SIZE 1099
+
 FILE *wav_file;
 uint32_t total_samples = 0;
+
+static void die(const char *msg, int code)
+{
+    fprintf(stderr, "Error: %s\n", msg);
+    exit(code);
+}
+
 
 void write_wav_header(FILE *f, uint32_t sample_rate, uint32_t num_samples)
 {
@@ -102,22 +111,56 @@ int main(int argc, char *argv[])
 {
     if (argc == 1) {
         fprintf(stderr,
-            "\nSuper Maxi 1K ZX81 Loader\n"
-            "\nThis is a kit to allow the use of every byte of the ZX81’s single KB RAM."
-            "\nIt takes as input a memory snapshot covering addresses from $4000 to $43F4,"
-            "\nand generates a .wav file that can be loaded on a real ZX81.\n"
-            "\nMore information at: (link here)\n"
-            "\nUsage: %s <Snapshot> <StartAddress> [<Values for BC' DE' HL'> [<AF'> <IX> <IY> <I>]]"
-            "\nExample: %s snapshot.bin 0x4321 0x0123 0x4567 0x89AB 0xCDEF 0x0281 0x4000 0x42\n\n",
-            argv[0], argv[0]);
+            "\nSuper Maxi 1K ZX81 Loader has been designed to allow to"
+            "\nsqueeze every  possible byte out of the Sinclair ZX81’s 1 KB RAM:"
+            "\nit takes as input a memory snapshot and generates a .wav file that"
+            "\ncan be loaded on a real ZX81, and a .sml file that can be loaded"
+            "\ninto compatible emulators, restoring memory and CPU state with"
+            "\nprecise control."
+            "\n\nUsage:"
+            "\n  smloadgen <Snapshot> <StartAddress> [<Values for BC' DE' HL'> [<AF'> <IX> <IY> <I>]]"
+            "\nExample minimal parameters:"
+            "\n  smloadgen snapshot.bin 0x4321"
+            "\nExample all parameters:"
+            "\n  smloadgen snapshot.bin 0x4036 0x0123 0x4567 0x89AB 0xCDEF 0x0281 0x4000 0x42"
+            "\n\nSnapshot Requirements:"
+            "\n  1. The input snapshot must represent raw memory contents from $4000 to $43F5."
+            "\n  2. A ret instruction must be present exactly at $43F4"
+            "\n     (at least one additional byte must exist at $43F5, meaning"
+            "\n     the snapshot file should be at least 1014 bytes long)"
+            "\nProgram entry code should switch back to SLOW mode with out($FE) if needed"
+            "\n(system variables should also have proper values in case)."
+            "\n\nCPU State on Entry:"
+            "\n  PC = user selected value"
+            "\n  SP = $4400"
+            "\n  AF = load dependent"
+            "\n  B  = 0"
+            "\n  C  = last byte loaded (56=38h in the example program)"
+            "\n  DE = $43F4"
+            "\n  HL = $43F5"
+            "\n  AF'= user-selected value"
+            "\n  BC'= user-selected value"
+            "\n  DE'= user-selected value"
+            "\n  HL'= user-selected value"
+            "\n  IX = $0281 ROM default (for video display), or user selected value"
+            "\n  IY = $4000 ROM default (for sysvars access), or user selected value"
+            "\n  I  = $1E ROM default (for video characters set), or user selected value"
+            "\n  R  = undetermined"
+            "\n\nHappy hacking,"
+            "\n_Stefano\n\n");
         return 1;
     }
 
     if (argc < 3) {
         fprintf(stderr,
-            "\nUsage: %s <Snapshot File> <Starting Address> [<BC' value> <DE' value> <HL' value>"
+            "\nSuper Maxi 1K ZX81 Loader, BySte 2026"
+            "\n\nUsage:"
+            "\n  %s <Snapshot File> <Starting Address> [<BC' value> <DE' value> <HL' value>"
             "\n                [<AF' value> <IX value> <IY value> <I value>]]"
-            "\nExample: %s snapshot.bin 0x4321 0x0123 0x4567 0x89AB 0xCDEF 0x0281 0x4000 0x42\n",
+            "\nExample:"
+            "\n  %s snapshot.bin 0x4321 0x0123 0x4567 0x89AB 0xCDEF 0x0281 0x4000 0x42\n"
+            "\nFor more details run the program without parameters, or look at:"
+            "\n  https://github.com/stevexyz/ZX81-1K-Super-Maxi-Loader\n\n",
             argv[0], argv[0]);
         return 1;
     }
@@ -147,51 +190,55 @@ int main(int argc, char *argv[])
         0x4C,0x03,0xF4,0x43,0xF4,0x43,0x36,0x40,0x80
     };
 
-    if (size2<1014) {
-        perror("Loaded program shoud be at least 1014 bytes long");
-        return 2;
-    }
+    if (size2<1014)
+        die("Loaded program shoud be at least 1014 bytes long", 1);
 
-    if (data2[0x3F4]!=0xC9) {
-        perror("Loaded program shoud start at $4000 have a ret instruction at address $43F4 (starting from 0, offset 1012 in the file)");
-        return 3;
-    }
+    if (data2[0x3F4]!=0xC9)
+        die("Loaded program shoud start at $4000 have a ret instruction at address $43F4 (starting from 0, offset 1012 in the file)", 2);
 
-    /* Update loader parameters */
-    uint16_t word;
-    uint8_t byte;
-    word = (uint16_t)strtoul(argv[2], NULL, 0);
-    data1[0x6F - 9] = word % 256; // PC
-    data1[0x6F - 8] = word / 256;
+    /* loader parameters */
+
+    uint16_t pc = (uint16_t)strtoul(argv[2], NULL, 0);
+    if (pc < 0x4000 || pc > 0x43FF)
+        die("StartAddress must be in range $4000–$43FF", 3);
+    data1[0x6F - 9] = pc % 256; // PC
+    data1[0x6F - 8] = pc / 256;
+
+    /* Defaults */
+    uint16_t af = 0b00101001, bc = 53, de = 0x43F4, hl = 0x43F5;
+    uint16_t af_p = 0x4242, bc_p = 0x4242, de_p = 0x4242, hl_p = 0x4242;
+    uint16_t ix = 0x0281, iy = 0x4000;
+    uint8_t  ireg = 0x1E;
+
     if (argc > 3) {
-        word = (uint16_t)strtoul(argv[3], NULL, 0);
-        data1[0x3D - 8] = word % 256; // BC'
-        data1[0x3D - 7] = word / 256;
-        word = (uint16_t)strtoul(argv[4], NULL, 0);
-        data1[0x40 - 8] = word % 256; // DE'
-        data1[0x40 - 7] = word / 256;
-        word = (uint16_t)strtoul(argv[5], NULL, 0);
-        data1[0x43 - 8] = word % 256; // HL'
-        data1[0x43 - 7] = word / 256;
+        bc_p = (uint16_t)strtoul(argv[3], NULL, 0);
+        data1[0x3D - 8] = bc_p % 256; // BC'
+        data1[0x3D - 7] = bc_p / 256;
+        de_p = (uint16_t)strtoul(argv[4], NULL, 0);
+        data1[0x40 - 8] = de_p % 256; // DE'
+        data1[0x40 - 7] = de_p / 256;
+        hl_p = (uint16_t)strtoul(argv[5], NULL, 0);
+        data1[0x43 - 8] = hl_p % 256; // HL'
+        data1[0x43 - 7] = hl_p / 256;
     }
     if (argc > 6) {
-        word = (uint16_t)strtoul(argv[6], NULL, 0);
-        data1[0x48 - 8] = word % 256; // AF'
-        data1[0x48 - 7] = word / 256;
+        af_p = (uint16_t)strtoul(argv[6], NULL, 0);
+        data1[0x48 - 8] = af_p % 256; // AF'
+        data1[0x48 - 7] = af_p / 256;
     }
     if (argc > 7) {
-        word = (uint16_t)strtoul(argv[7], NULL, 0);
-        data1[0x4E - 8] = word % 256; // IX
-        data1[0x4E - 7] = word / 256;
+        ix = (uint16_t)strtoul(argv[7], NULL, 0);
+        data1[0x4E - 8] = ix % 256; // IX
+        data1[0x4E - 7] = ix / 256;
     }
     if (argc > 8) {
-        word = (uint16_t)strtoul(argv[8], NULL, 0);
-        data1[0x52 - 8] = word % 256; // IY
-        data1[0x52 - 7] = word / 256;        
+        iy = (uint16_t)strtoul(argv[8], NULL, 0);
+        data1[0x52 - 8] = iy % 256; // IY
+        data1[0x52 - 7] = iy / 256;        
     }
     if (argc > 9) {
-        byte = (uint8_t)strtoul(argv[9], NULL, 0);
-        data1[0x56 - 8] = byte; // I       
+        ireg = (uint8_t)strtoul(argv[9], NULL, 0);
+        data1[0x56 - 8] = ireg; // I       
     }
     
     /* Open WAV file */
@@ -206,10 +253,8 @@ int main(int argc, char *argv[])
     strncat(outname, ".wav", sizeof(outname) - strlen(outname) - 1);
     wav_file = fopen(outname, "wb");
 
-    if (!wav_file) {
-        perror("Failed to open output WAV");
-        return 4;
-    }
+    if (!wav_file)
+        die("Failed to open output WAV", 4);
 
     /* Placeholder header (will be updated later) */
     write_wav_header(wav_file, SAMPLE_RATE, 0);
@@ -244,5 +289,76 @@ int main(int argc, char *argv[])
     free(data2);
 
     printf("Created %s\n", outname);
+
+    /* Build SML file */
+    uint8_t sml[SML_SIZE];
+    memset(sml, 0, sizeof(sml));
+    memcpy(&sml[0], "SML1", 4); // Header
+    sml[4] = 0x01; // version
+    int i=49; // registers
+    sml[i++] = pc & 0xFF;
+    sml[i++] = pc >> 8;
+    sml[i++] = 0x00;
+    sml[i++] = 0x44;
+    sml[i++] = af & 0xFF;
+    sml[i++] = af >> 8;
+    sml[i++] = bc & 0xFF;
+    sml[i++] = bc >> 8;
+    sml[i++] = de & 0xFF;
+    sml[i++] = de >> 8;
+    sml[i++] = hl & 0xFF;
+    sml[i++] = hl >> 8;
+    sml[i++] = af_p & 0xFF;
+    sml[i++] = af_p >> 8;
+    sml[i++] = bc_p & 0xFF;
+    sml[i++] = bc_p >> 8;
+    sml[i++] = de_p & 0xFF;
+    sml[i++] = de_p >> 8;
+    sml[i++] = hl_p & 0xFF;
+    sml[i++] = hl_p >> 8;
+    sml[i++] = ix & 0xFF;
+    sml[i++] = ix >> 8;
+    sml[i++] = iy & 0xFF;
+    sml[i++] = iy >> 8;
+    sml[i++] = 0x00; // undefined
+    sml[i++] = ireg;
+    if (i!=75)
+        die("internal error 75", 5);
+    /* RAM image */
+    for(int j=0; j<1014; j++)
+        sml[i++] = data2[j];
+    sml[i++] = 0x23;
+    sml[i++] = 0xD5;
+    sml[i++] = 0xC3;
+    sml[i++] = 0x4C;
+    sml[i++] = 0x03;
+    sml[i++] = de & 0xFF;
+    sml[i++] = de >> 8;
+    sml[i++] = 0xF4; // load_loop
+    sml[i++] = 0x43;
+    sml[i++] = pc & 0xFF;
+    sml[i++] = pc >> 8;
+    if (i!=1100)
+        die("internal error 1100", 6);
+
+    /* Output */
+    strncpy(outname, argv[1], sizeof(outname));
+    outname[sizeof(outname) - 1] = '\0';
+    slash = strrchr(outname, '/');
+    dot   = strrchr(outname, '.');
+    if (dot && (!slash || dot > slash)) {
+        *dot = '\0';   // remove existing extension
+    }
+    strncat(outname, ".sml", sizeof(outname) - strlen(outname) - 1);
+
+    FILE *f = fopen(outname, "wb");
+    if (!f)
+        die("Cannot create output file", 7);
+
+    fwrite(sml, 1, sizeof(sml), f);
+    fclose(f);
+
+    printf("Created %s\n", outname);
+
     return 0;
 }
