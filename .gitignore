@@ -5,9 +5,9 @@
 *.sld
 *.sym 
 *.sld.txt
-*.exe 
-smloadgen
-smlfilegen
+#*.exe 
+#smloadgen
+#smlfilegen
 *.elf 
 *.dbg 
 *.rom
@@ -20,10 +20,10 @@ smlfilegen
 *.Temp
 .temp/*
 .tmp/*
-;*.gif
-;*.png
-;*.bmp
-;*.jpg
-;*.jpeg
+#*.gif
+#*.png
+#*.bmp
+#*.jpg
+#*.jpeg
 *.hex
 
