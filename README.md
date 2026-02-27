@@ -26,7 +26,7 @@ smloadgen snapshot.bin 0x4036 0x0123 0x4567 0x89AB 0xCDEF 0x0281 0x4000 0x42
 
 This will generate:
 1. a `.wav` file that loads the snapshot and runs it at the starting address with the selected registers value set
-2. an equivaent program file (".sml") to be load into compatible emulators (see SMLfile.md for details)
+2. an equivaent program file `.sml` to be load into compatible emulators (see SMLfile.md for details)
 
 ---
 
