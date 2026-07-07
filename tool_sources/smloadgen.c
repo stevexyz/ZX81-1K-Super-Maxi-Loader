@@ -8,14 +8,14 @@
 #define SILENCE_PULSE   1300e-6 // silence between bits
 #define ZERO_PULSES     4
 #define ONE_PULSES      9
-#define LOW_VALUE       0 // 8 bit wav file
-#define MIDDLE_VALUE    128
-#define HIGH_VALUE      250
-#define INITIAL_SILENCE 0.3 // in seconds
-#define MIDDLE_GAP      0.1
-#define ENDING_SILENCE  0.3
+#define LOW_VALUE       1 // 8 bit wav file
+#define MIDDLE_VALUE    1
+#define HIGH_VALUE      254
+#define INITIAL_SILENCE 1.0 // in seconds
+#define MIDDLE_GAP      0.2
+#define ENDING_SILENCE  1.0
 #define SMOOTH_WAVE     // if defined the wave will be smoothed a bit to minimize gibbs effects
-#define SMOOTH_FACTOR   0.85
+#define SMOOTH_FACTOR   0.90
 
 #define SML_SIZE 1099
 
