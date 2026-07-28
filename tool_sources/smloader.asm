@@ -99,7 +99,7 @@ stack_pos:
     ;   A  = loader-dependent
     ;   F  = 00101001b
     ;   B  = 0
-    ;   C  = last byte loaded (56=38h in the example program)
+    ;   C  = last byte loaded (53=$35 in the example program)
     ;   DE = $43F4
     ;   HL = $43F5
     ;   AF', BC', DE', HL' = user-selected values
