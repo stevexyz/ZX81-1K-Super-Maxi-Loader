@@ -77,5 +77,5 @@ dfile: ; collapsed display for 1k
 
 ;---------------------------------------------------------
 ; keep below line to have ret instruction properly placed 
- dup ($43F4-$) : nop : edup : ret : db _cS
+ dup ($43F4-$) : nop : edup : ret : db 53
 ;---------------------------------------------------------

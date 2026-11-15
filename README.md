@@ -30,6 +30,29 @@ This will generate:
 
 ---
 
+## Shaping an existing .wav: `smlwavpp`
+
+`tool_sources/smlwavpp` post-processes a .wav to remove sharp edges that might cause ringing / gibbs effect.
+
+`-h` lists every flag with its default. Knobs are in physical units (microseconds, Hertz) and
+the sample rate is read from the input file, so they mean the same at 44100 and at 96000. Experiment with
+various options to find out the best (maybe you can report results or better defaults with issues here).
+
+```
+smlwavpp <file.wav> [-o out.wav] [-shape rise|none|pole|lp] [-edge us] [-factor f] [-cutoff hz]
+                     [-gain x] [-silence n] [-stereo]
+```
+
+```
+smlwavpp snapshot.wav # raised cosine edges, 80 us, mono
+smlwavpp snapshot.wav -shape none -stereo # input samples untouched, duplicated on both channels
+smlwavpp snapshot.wav -shape lp -cutoff 14000 -stereo # experiment freely
+```
+
+The `.wav` written by `smloadgen` is square waved and can be improved with `smlwavpp` before recording to tape.
+
+---
+
 ## Snapshot Requirements
 
 The input snapshot must represent memory contents from `$4000` to `$43F4` and must follow these rules:
@@ -38,7 +61,12 @@ The input snapshot must represent memory contents from `$4000` to `$43F4` and mu
    (end of the maximum loadable code)
 
 2. At least **one additional byte** must exist at `$43F5`
-   (snapshot file should be at least 1014 bytes long)
+   (snapshot file should be at least 1014 bytes long).
+   That byte is **not** written to memory: the loop stores one byte behind
+   (`ld (hl),c` stores what the previous byte read delivered), so the byte read
+   after `$43F4` has been overwritten with `ret` is what ends the load and it
+   stays in **C** — see *CPU State on Entry*. `$43F5` itself keeps whatever was
+   there before the load.
 
 3. Program entry code should switch back to **SLOW mode** with `out ($FE), a` when needed (system variables should also have proper values in case)
 
@@ -53,7 +81,7 @@ See example program for details.
   SP = $4400
   AF = load dependent
   B  = 0
-  C  = last byte loaded (56=38h in the example program)
+  C  = last byte loaded (53=35h in the example program)
   DE = $43F4
   HL = $43F5
   AF'= user-selected value

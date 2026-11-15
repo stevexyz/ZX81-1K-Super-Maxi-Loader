@@ -20,6 +20,7 @@
 *.Temp
 .temp/*
 .tmp/*
+old/*
 #*.gif
 #*.png
 #*.bmp

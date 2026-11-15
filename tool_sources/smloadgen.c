@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define SAMPLE_RATE     44100 // CD quality
+#define SAMPLE_RATE     96000 // studio quality // 44100 // CD quality
 #define HALF_PULSE      150e-6 // 300 µs sine pulse (square)
 #define SILENCE_PULSE   1300e-6 // silence between bits
 #define ZERO_PULSES     4
@@ -14,8 +14,6 @@
 #define INITIAL_SILENCE 1.0 // in seconds
 #define MIDDLE_GAP      0.2
 #define ENDING_SILENCE  1.0
-#define SMOOTH_WAVE     // if defined the wave will be smoothed a bit to minimize gibbs effects
-#define SMOOTH_FACTOR   0.90
 
 #define SML_SIZE 1099
 
@@ -62,11 +60,7 @@ void write_wav_header(FILE *f, uint32_t sample_rate, uint32_t num_samples)
 uint8_t ssample;
 void add_sample(uint8_t sample)
 {
-    #ifdef SMOOTH_WAVE
-        ssample += (sample - ssample) * SMOOTH_FACTOR;
-    #else
-        ssample = sample;
-    #endif
+    ssample = sample;
     fwrite(&ssample, 1, 1, wav_file);
     total_samples++;
 }
@@ -135,7 +129,7 @@ int main(int argc, char *argv[])
             "\n  SP = $4400"
             "\n  AF = load dependent"
             "\n  B  = 0"
-            "\n  C  = last byte loaded (56=38h in the example program)"
+            "\n  C  = last byte loaded (53=35h in the example program)"
             "\n  DE = $43F4"
             "\n  HL = $43F5"
             "\n  AF'= user-selected value"
@@ -167,15 +161,14 @@ int main(int argc, char *argv[])
 
     /* Read input file */
     FILE *f2 = fopen(argv[1], "rb");
-    if (!f2) {
-        perror("Failed to open input file");
-        return 1;
-    }
+    if (!f2)
+        die("Failed to open input file",8);
     fseek(f2, 0, SEEK_END);
     long size2 = ftell(f2);
     rewind(f2);
     uint8_t *data2 = malloc(size2);
-    fread(data2, 1, size2, f2);
+    if (fread(data2, 1, size2, f2) != size2) 
+        die("Failed to read input file", 9);
     fclose(f2);
 
     // loader.p    
@@ -205,9 +198,16 @@ int main(int argc, char *argv[])
     data1[0x6F - 8] = pc / 256;
 
     /* Defaults */
-    uint16_t af = 0b00101001, bc = 53, de = 0x43F4, hl = 0x43F5;
-    uint16_t af_p = 0x4242, bc_p = 0x4242, de_p = 0x4242, hl_p = 0x4242;
-    uint16_t ix = 0x0281, iy = 0x4000;
+    uint16_t af = 0b00101001, 
+             bc = 53, 
+             de = 0x43F4, 
+             hl = 0x43F5;
+    uint16_t af_p = 0x4242, 
+             bc_p = 0x4242, 
+             de_p = 0x4242, 
+             hl_p = 0x4242;
+    uint16_t ix = 0x0281, 
+             iy = 0x4000;
     uint8_t  ireg = 0x1E;
 
     if (argc > 3) {
@@ -286,7 +286,6 @@ int main(int argc, char *argv[])
     write_wav_header(wav_file, SAMPLE_RATE, total_samples);
 
     fclose(wav_file);
-    free(data2);
 
     printf("Created %s\n", outname);
 
@@ -325,8 +324,9 @@ int main(int argc, char *argv[])
     if (i!=75)
         die("internal error 75", 5);
     /* RAM image */
-    for(int j=0; j<1014; j++)
+    for(int j=0; j<1013; j++)
         sml[i++] = data2[j];
+    // sml[i++] = 0x71; // overwritten by ret
     sml[i++] = 0x23;
     sml[i++] = 0xD5;
     sml[i++] = 0xC3;
@@ -338,8 +338,8 @@ int main(int argc, char *argv[])
     sml[i++] = 0x43;
     sml[i++] = pc & 0xFF;
     sml[i++] = pc >> 8;
-    if (i!=1100)
-        die("internal error 1100", 6);
+    if (i!=1099)
+        die("internal error 1099", 6);
 
     /* Output */
     strncpy(outname, argv[1], sizeof(outname));
@@ -359,6 +359,8 @@ int main(int argc, char *argv[])
     fclose(f);
 
     printf("Created %s\n", outname);
+
+    free(data2);
 
     return 0;
 }
