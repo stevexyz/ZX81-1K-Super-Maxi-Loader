@@ -13,8 +13,8 @@
 #define HIGH_VALUE      254
 #define INITIAL_SILENCE 1.0 // in seconds
 #define ENDING_SILENCE  1.0
-#define SMOOTH_WAVE     // if defined the wave will be smoothed a bit to minimize gibbs effects
-#define SMOOTH_FACTOR   0.90
+//#define SMOOTH_WAVE     // if defined the wave will be smoothed a bit to minimize gibbs effects
+//#define SMOOTH_FACTOR   0.90
 
 #define SML_SIZE 1099
 
