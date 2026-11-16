@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define SAMPLE_RATE     44100 // CD quality
+#define SAMPLE_RATE     96000 // studio quality // 44100 // CD quality
 #define HALF_PULSE      150e-6 // 300 µs sine pulse (square)
 #define SILENCE_PULSE   1300e-6 // silence between bits
 #define ZERO_PULSES     4
